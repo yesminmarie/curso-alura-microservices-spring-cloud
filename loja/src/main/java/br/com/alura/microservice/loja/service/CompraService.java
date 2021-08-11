@@ -6,25 +6,34 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import br.com.alura.microservice.loja.controller.dto.CompraDTO;
-import br.com.alura.microservice.loja.controller.dto.InfoFornecedorDTO;
+import com.netflix.discovery.DiscoveryClient;
+
+import br.com.alura.microservice.loja.client.FornecedorClient;
+import br.com.alura.microservice.loja.dto.CompraDTO;
+import br.com.alura.microservice.loja.dto.InfoFornecedorDTO;
+import br.com.alura.microservice.loja.dto.InfoPedidoDTO;
+import br.com.alura.microservice.loja.model.Compra;
 
 @Service
 public class CompraService {
 	
 	@Autowired
-	private RestTemplate client;
+	private FornecedorClient fornecedorClient;
 
-	public void realizaCompra(CompraDTO compra) {
+	public Compra realizaCompra(CompraDTO compra) {
 		
-		//método exchange retorna ResponseEntity do tipo InfoFornecedorDTO 
-		//retorna as informações do fornecedor
-		ResponseEntity<InfoFornecedorDTO> exchange =
-		client.exchange("http://fornecedor/info/"+compra.getEndereco().getEstado(), 
-				HttpMethod.GET, null, InfoFornecedorDTO.class); //pega o estado de destino da compra que é o estado do fornecedor
+		InfoFornecedorDTO info = fornecedorClient.getInfoPorEstado(compra.getEndereco().getEstado());
 		
-		//getBody() pega InfoFornecedorDTO
-		System.out.println(exchange.getBody().getEndereco());
+		InfoPedidoDTO pedido = fornecedorClient.realizaPedido(compra.getItens());
+	
+		System.out.println(info.getEndereco());
+		
+		Compra compraSalva = new Compra();
+		compraSalva.setPedidoId(pedido.getId());
+		compraSalva.setTempoDePreparo(pedido.getTempoDePreparo());
+		compraSalva.setEnderecoDestino(compra.getEndereco().toString());
+		
+		return compraSalva;
 	}
 
 }
