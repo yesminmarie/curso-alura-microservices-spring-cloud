@@ -10,4 +10,4 @@ spring:
           default-label: main
           skip-ssl-validation: true
           uri: https://github.com/yesminmarie/microservice-repo.git
-          search-paths: fornecedor
+          search-paths: fornecedor,loja
