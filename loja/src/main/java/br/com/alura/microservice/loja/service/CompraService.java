@@ -1,5 +1,7 @@
 package br.com.alura.microservice.loja.service;
 
+import java.time.LocalDate;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,9 +14,12 @@ import com.netflix.discovery.DiscoveryClient;
 import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
 
 import br.com.alura.microservice.loja.client.FornecedorClient;
+import br.com.alura.microservice.loja.client.TransportadorClient;
 import br.com.alura.microservice.loja.dto.CompraDTO;
+import br.com.alura.microservice.loja.dto.InfoEntregaDTO;
 import br.com.alura.microservice.loja.dto.InfoFornecedorDTO;
 import br.com.alura.microservice.loja.dto.InfoPedidoDTO;
+import br.com.alura.microservice.loja.dto.VoucherDTO;
 import br.com.alura.microservice.loja.model.Compra;
 import br.com.alura.microservice.loja.repository.CompraRepository;
 
@@ -25,6 +30,9 @@ public class CompraService {
 	
 	@Autowired
 	private FornecedorClient fornecedorClient;
+	
+	@Autowired
+	private TransportadorClient transportadorClient;
 	
 	@Autowired
 	private CompraRepository compraRepository;
@@ -45,13 +53,20 @@ public class CompraService {
 		
 		LOG.info("realizando um pedido");
 		InfoPedidoDTO pedido = fornecedorClient.realizaPedido(compra.getItens());
-	
-		System.out.println(info.getEndereco());
+		
+		InfoEntregaDTO entregaDto = new InfoEntregaDTO();
+		entregaDto.setPedidoId(pedido.getId());
+		entregaDto.setDataParaEntrega(LocalDate.now().plusDays(pedido.getTempoDePreparo()));
+		entregaDto.setEnderecoOrigem(info.getEndereco());
+		entregaDto.setEnderecoDestino(compra.getEndereco().toString());
+		VoucherDTO voucher = transportadorClient.reservaEntrega(entregaDto);
 		
 		Compra compraSalva = new Compra();
 		compraSalva.setPedidoId(pedido.getId());
 		compraSalva.setTempoDePreparo(pedido.getTempoDePreparo());
 		compraSalva.setEnderecoDestino(compra.getEndereco().toString());
+		compraSalva.setDataParaEntrega(voucher.getPrevisaoParaEntrega());
+		compraSalva.setVoucher(voucher.getNumero());
 		compraRepository.save(compraSalva);
 		
 		return compraSalva;
